@@ -146,21 +146,31 @@ def select_movie_size(url: str):
 
 
 def get_final_link(page, selected_url: str):
+    print("FINAL LINK: starting")
+    print("FINAL LINK URL:", selected_url)
+
     page.goto(
         selected_url,
         wait_until="domcontentloaded",
         timeout=30000,
     )
 
+    print("FINAL LINK: page loaded")
+    print("FINAL LINK TITLE:", page.title())
+
     page.wait_for_selector(
         "a.button",
         timeout=30000,
     )
 
+    print("FINAL LINK: button found")
+
     link = page.locator("a.button").first
+    href = link.get_attribute("href")
 
-    return link.get_attribute("href")
+    print("FINAL LINK HREF:", href)
 
+    return href
 
 
 
