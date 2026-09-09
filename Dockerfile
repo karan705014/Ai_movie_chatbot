@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     ca-certificates \
+    chromium \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
