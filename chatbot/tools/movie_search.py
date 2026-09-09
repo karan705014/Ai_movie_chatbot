@@ -26,9 +26,9 @@ def movie_search(movie_name: str):
             page = browser.new_page()
 
             page.goto(search_url, wait_until="domcontentloaded",timeout=30000)
-
+            print("PAGE TITLE:", page.title())
             # Wait until JS-generated result container is populated.
-            page.wait_for_selector("#ff-results .A10",timeout=15000)
+            page.wait_for_selector("#ff-results .A10",timeout=30000)
 
             # Get the final DOM after JavaScript execution.
             html = page.content()
@@ -46,6 +46,8 @@ def movie_search(movie_name: str):
         for box in results:
             title_tag = box.select_one(".row-title")
             link_tag = box.select_one("a[href]")
+            image_tag = box.select_one("img.row-thumb")
+
 
             if not title_tag or not link_tag:
                 continue
@@ -56,9 +58,14 @@ def movie_search(movie_name: str):
             if not href:
                 continue
 
+            # Extract poster URL
+            image = image_tag.get("src") if image_tag else None
+
             movies.append({
                 "title": title,
                 "url": urljoin(BASE_URL, href),
+                "image": image,
+
             })
 
         return movies
@@ -83,7 +90,7 @@ def select_movie(url: str):
             page.goto(url, wait_until="domcontentloaded",timeout=30000)
 
             link = page.locator(".dlbtn a.bg2").first
-            link.wait_for(timeout=15000)
+            link.wait_for(timeout=30000)
 
             if link.count() == 0:
                 print("Download link not found")
@@ -108,7 +115,7 @@ def select_movie_size(url: str):
             page = browser.new_page()
 
             page.goto(url, wait_until="domcontentloaded",timeout=30000)
-            page.wait_for_selector(".dlink.dl",timeout=15000)
+            page.wait_for_selector(".dlink.dl",timeout=30000)
 
             options = []
 
@@ -147,7 +154,7 @@ def get_final_link(page, selected_url: str):
 
     page.wait_for_selector(
         "a.button",
-        timeout=15000,
+        timeout=30000,
     )
 
     link = page.locator("a.button").first

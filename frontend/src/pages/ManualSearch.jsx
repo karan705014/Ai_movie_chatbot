@@ -1,687 +1,706 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 
-export default function ManualSearch({
-  initialQuery = "",
-}) {
-  const [query, setQuery] = useState(initialQuery);
+export default function ManualSearch({ initialQuery = "" }) {
+    const [query, setQuery] = useState(initialQuery);
+    const [movies, setMovies] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [selectionLoading, setSelectionLoading] = useState(false);
+    const [sizeLoading, setSizeLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [selectedMovie, setSelectedMovie] = useState(null);
+    const [movieSizes, setMovieSizes] = useState([]);
+    const [finalLink, setFinalLink] = useState("");
+    const [hasSearched, setHasSearched] = useState(false);
 
-  const [movies, setMovies] = useState([]);
-
-  const [loading, setLoading] = useState(false);
-
-  const [selectionLoading, setSelectionLoading] =
-    useState(false);
-
-  const [sizeLoading, setSizeLoading] =
-    useState(false);
-
-  const [error, setError] = useState("");
-
-  const [selectedMovie, setSelectedMovie] =
-    useState(null);
-
-  const [movieSizes, setMovieSizes] =
-    useState([]);
-
-  const [finalLink, setFinalLink] =
-    useState("");
+    const resultsRef = useRef(null);
+    const selectedMovieRef = useRef(null);
+    const optionsRef = useRef(null);
+    const finalResultRef = useRef(null);
 
 
-  /* =========================
-     AI SE MOVIE NAME AAYA
-  ========================= */
+    /* =========================
+       AI MOVIE AUTO SEARCH
+    ========================= */
 
-  useEffect(() => {
-    const movieName = initialQuery?.trim();
+    useEffect(() => {
+        const movieName = initialQuery?.trim();
 
-    if (!movieName) {
-      return;
-    }
+        if (!movieName) return;
 
-    setQuery(movieName);
-
-    handleSearch(movieName);
-  }, [initialQuery]);
+        setQuery(movieName);
+        handleSearch(movieName);
+    }, [initialQuery]);
 
 
-  /* =========================
-     MOVIE SEARCH
-  ========================= */
+    /* =========================
+       AUTO SCROLL - RESULTS
+    ========================= */
 
-  const handleSearch = async (
-    searchQuery = query
-  ) => {
-    const searchValue = searchQuery.trim();
-
-    if (!searchValue) {
-      return;
-    }
-
-    setLoading(true);
-
-    setError("");
-
-    setMovies([]);
-
-    setSelectedMovie(null);
-
-    setMovieSizes([]);
-
-    setFinalLink("");
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/search/?q=${encodeURIComponent(
-          searchValue
-        )}`
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Search failed."
-        );
-      }
-
-      setMovies(
-        data?.results || []
-      );
-
-    } catch (err) {
-      console.error(
-        "SEARCH ERROR:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to search movies."
-      );
-
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  /* =========================
-     MOVIE SELECT
-  ========================= */
-
-  const handleMovieSelect = async (
-    movie
-  ) => {
-    if (!movie?.url) {
-      setError(
-        "Selected movie has no valid URL."
-      );
-
-      return;
-    }
-
-    setSelectedMovie(movie);
-
-    setMovieSizes([]);
-
-    setFinalLink("");
-
-    setError("");
-
-    setSelectionLoading(true);
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/movie/selected/`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            movie_url: movie.url,
-          }),
+    useEffect(() => {
+        if (!loading && movies.length > 0) {
+            requestAnimationFrame(() => {
+                resultsRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            });
         }
-      );
-
-      const data =
-        await response.json();
-
-      console.log(
-        "MOVIE SELECTION RESPONSE:",
-        data
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Failed to load movie options."
-        );
-      }
-
-      setMovieSizes(
-        data?.movie_size || []
-      );
-
-    } catch (err) {
-      console.error(
-        "MOVIE SELECTION ERROR:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to load movie options."
-      );
-
-    } finally {
-      setSelectionLoading(false);
-    }
-  };
+    }, [movies, loading]);
 
 
-  /* =========================
-     OPTION / SIZE SELECT
-  ========================= */
+    /* =========================
+       AUTO SCROLL - SELECTED
+    ========================= */
 
-  const handleSizeSelect = async (
-    option
-  ) => {
-    console.log(
-      "CLICKED OPTION:",
-      option
-    );
-
-    const selectedUrl =
-      option?.url ||
-      option?.href;
-
-    console.log(
-      "SELECTED URL:",
-      selectedUrl
-    );
-
-    if (!selectedUrl) {
-      setError(
-        "Selected option has no valid URL."
-      );
-
-      return;
-    }
-
-    setSizeLoading(true);
-
-    setError("");
-
-    setFinalLink("");
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/movie/size/selected/`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            movie_size_url:
-              selectedUrl,
-          }),
+    useEffect(() => {
+        if (!selectionLoading && selectedMovie) {
+            requestAnimationFrame(() => {
+                selectedMovieRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            });
         }
-      );
-
-      const data =
-        await response.json();
-
-      console.log(
-        "SIZE API RESPONSE:",
-        data
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Failed to process selected option."
-        );
-      }
-
-      setFinalLink(
-        data?.final_link || ""
-      );
-
-    } catch (err) {
-      console.error(
-        "SIZE SELECTION ERROR:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to process selected option."
-      );
-
-    } finally {
-      setSizeLoading(false);
-    }
-  };
+    }, [selectedMovie, selectionLoading]);
 
 
-  return (
-    <section className="max-w-5xl mx-auto">
+    /* =========================
+       AUTO SCROLL - OPTIONS
+    ========================= */
 
-      {/* =========================
-          SEARCH BOX
-      ========================= */}
+    useEffect(() => {
+        if (!selectionLoading && movieSizes.length > 0) {
+            requestAnimationFrame(() => {
+                optionsRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            });
+        }
+    }, [movieSizes, selectionLoading]);
 
-      <div className="flex flex-col sm:flex-row gap-3 p-2 rounded-2xl bg-white/[0.05] border border-white/10 shadow-2xl shadow-purple-950/20 backdrop-blur-xl">
 
-        <input
-          type="text"
-          placeholder="Search a movie..."
-          value={query}
-          onChange={(e) =>
-            setQuery(e.target.value)
-          }
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleSearch();
+    /* =========================
+       AUTO SCROLL - FINAL
+    ========================= */
+
+    useEffect(() => {
+        if (!sizeLoading && finalLink) {
+            requestAnimationFrame(() => {
+                finalResultRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            });
+        }
+    }, [finalLink, sizeLoading]);
+
+
+    /* =========================
+       STEP 1
+       SEARCH MOVIE
+    ========================= */
+
+    const handleSearch = async (searchValue = query) => {
+        const searchQuery = searchValue.trim();
+
+        if (!searchQuery || loading) return;
+
+        setLoading(true);
+        setError("");
+        setHasSearched(false);
+
+        setMovies([]);
+        setSelectedMovie(null);
+        setMovieSizes([]);
+        setFinalLink("");
+
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/search/?q=${encodeURIComponent(searchQuery)}`
+            );
+
+            const data = await response.json();
+
+            console.log("SEARCH RESPONSE:", data);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.error || "Search failed."
+                );
             }
-          }}
-          className="flex-1 min-w-0 px-5 py-4 rounded-xl bg-slate-900/70 border border-white/10 text-white placeholder-slate-500 outline-none focus:border-purple-400/60 focus:ring-2 focus:ring-purple-500/20 transition"
-        />
 
-        <button
-          type="button"
-          onClick={() =>
-            handleSearch()
-          }
-          disabled={loading}
-          className="px-7 py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-500 font-bold text-white shadow-lg shadow-purple-600/20 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+            setMovies(data?.results || []);
+            setHasSearched(true);
 
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
+        } catch (err) {
+            console.error("SEARCH ERROR:", err);
 
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            setError(
+                err?.message ||
+                "Failed to search movies."
+            );
 
-              Searching...
-
-            </span>
-          ) : (
-            "Search"
-          )}
-
-        </button>
-
-      </div>
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
-      {/* =========================
-          ERROR
-      ========================= */}
+    /* =========================
+       STEP 2
+       SELECT MOVIE
+    ========================= */
 
-      {error && (
-        <div className="mt-6">
+    const handleMovieSelect = async (movie) => {
+        if (!movie?.url) {
+            setError("Selected movie has no valid URL.");
+            return;
+        }
 
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300">
+        setSelectedMovie(movie);
+        setMovieSizes([]);
+        setFinalLink("");
+        setError("");
+        setSelectionLoading(true);
 
-            <span className="text-lg">
-              ⚠️
-            </span>
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/movie/selected/`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        movie_url: movie.url,
+                    }),
+                }
+            );
 
-            <p className="text-sm">
-              {error}
-            </p>
+            const data = await response.json();
 
-          </div>
+            console.log(
+                "MOVIE SELECTION RESPONSE:",
+                data
+            );
 
-        </div>
-      )}
+            if (!response.ok) {
+                throw new Error(
+                    data?.error ||
+                    "Failed to load movie options."
+                );
+            }
+
+            setMovieSizes(data?.movie_size || []);
+
+        } catch (err) {
+            console.error(
+                "MOVIE SELECTION ERROR:",
+                err
+            );
+
+            setError(
+                err?.message ||
+                "Failed to load movie options."
+            );
+
+        } finally {
+            setSelectionLoading(false);
+        }
+    };
 
 
-      {/* =========================
-          SEARCH RESULTS
-      ========================= */}
+    /* =========================
+       STEP 3
+       SELECT SIZE
+    ========================= */
 
-      {movies.length > 0 && (
-        <section className="mt-10">
+    const handleSizeSelect = async (option) => {
+        const selectedUrl =
+            option?.url ||
+            option?.href;
 
-          <div className="flex items-center justify-between mb-5">
+        console.log(
+            "SELECTED URL:",
+            selectedUrl
+        );
 
-            <div>
+        if (!selectedUrl) {
+            setError(
+                "Selected option has no valid URL."
+            );
+            return;
+        }
 
-              <h2 className="text-2xl font-bold">
-                Search Results
-              </h2>
+        setSizeLoading(true);
+        setError("");
+        setFinalLink("");
 
-              <p className="text-sm text-slate-500 mt-1">
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/movie/size/selected/`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        movie_size_url: selectedUrl,
+                    }),
+                }
+            );
 
-                {movies.length} movie
-                {movies.length !== 1
-                  ? "s"
-                  : ""}{" "}
-                found
+            const data = await response.json();
 
-              </p>
+            console.log(
+                "SIZE API RESPONSE:",
+                data
+            );
 
+            if (!response.ok) {
+                throw new Error(
+                    data?.error ||
+                    "Failed to process selected option."
+                );
+            }
+
+            setFinalLink(
+                data?.final_link || ""
+            );
+
+        } catch (err) {
+            console.error(
+                "SIZE SELECTION ERROR:",
+                err
+            );
+
+            setError(
+                err?.message ||
+                "Failed to process selected option."
+            );
+
+        } finally {
+            setSizeLoading(false);
+        }
+    };
+
+
+    return (
+        <section className="w-full min-w-0 max-w-5xl mx-auto px-2 sm:px-0 overflow-x-clip">
+
+            {/* SEARCH */}
+
+            <div className="w-full max-w-3xl mx-auto mb-8 sm:mb-10">
+
+                <div className="relative w-full min-w-0 flex gap-1.5 sm:gap-3 p-1.5 sm:p-2 rounded-2xl bg-white/[0.035] backdrop-blur-2xl border border-white/[0.10]">
+
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#39ff14]/[0.025] via-[#7CFFB2]/[0.035] to-[#67dfff]/[0.025]" />
+
+                    <input
+                        type="text"
+                        placeholder="Search a movie..."
+                        value={query}
+                        onChange={(e) =>
+                            setQuery(e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                handleSearch();
+                            }
+                        }}
+                        disabled={loading}
+                        className="relative flex-1 min-w-0 w-0 px-3 sm:px-5 py-3.5 sm:py-4 rounded-xl bg-black/40 border border-white/[0.08] text-white text-xs sm:text-base placeholder:text-white/25 outline-none focus:border-[#39ff14]/40"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => handleSearch()}
+                        disabled={loading || !query.trim()}
+                        className="group relative shrink-0 min-w-[92px] sm:min-w-[125px] h-[52px] sm:h-[58px] rounded-xl overflow-hidden
+               bg-[#39ff14]/[0.08]
+               border border-[#39ff14]/40
+               text-[#39ff14]
+               font-bold text-xs sm:text-base
+               shadow-[0_0_20px_rgba(57,255,20,0.12),inset_0_0_18px_rgba(57,255,20,0.04)]
+               hover:border-[#39ff14]/70
+               hover:shadow-[0_0_30px_rgba(57,255,20,0.28),inset_0_0_25px_rgba(57,255,20,0.08)]
+               active:scale-[0.97]
+               transition-all duration-300
+               disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        {/* Animated neon background */}
+                        <span className="absolute inset-[1px] rounded-[11px] bg-gradient-to-br from-[#39ff14]/20 via-[#39ff14]/[0.06] to-transparent opacity-70 group-hover:opacity-100 transition-opacity duration-300" />
+
+                        {/* Top shine */}
+                        <span className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-[#9affc8] to-transparent opacity-70" />
+
+                        {/* Hover scanning line */}
+                        <span className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-20 group-hover:translate-x-[180px] transition-transform duration-700" />
+
+                        {/* Button content */}
+                        {loading ? (
+                            <span className="relative z-10 flex items-center justify-center gap-2 h-full">
+                                <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-[#39ff14]/25 border-t-[#39ff14] rounded-full animate-spin" />
+
+                                <span className="hidden sm:inline text-[#9affc8]">
+                                    Searching
+                                </span>
+
+                                <span className="sm:hidden text-[#9affc8]">
+                                    ...
+                                </span>
+                            </span>
+                        ) : (
+                            <span className="relative z-10 flex items-center justify-center gap-2 h-full">
+
+                            
+
+                                <span className="hidden sm:inline tracking-wide">
+                                    Search
+                                </span>
+
+                            </span>
+                        )}
+                    </button>
+
+                </div>
             </div>
 
-          </div>
 
+            {/* ERROR */}
 
-          <div className="grid gap-4">
-
-            {movies.map(
-              (movie, index) => (
-                <button
-                  type="button"
-                  key={
-                    movie.url ||
-                    index
-                  }
-                  onClick={() =>
-                    handleMovieSelect(
-                      movie
-                    )
-                  }
-                  className="group w-full text-left p-5 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-purple-400/40 hover:bg-purple-500/[0.06] hover:shadow-xl hover:shadow-purple-950/20 transition-all duration-200"
-                >
-
-                  <div className="flex items-center gap-4">
-
-                    <div className="flex shrink-0 items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600/30 to-cyan-500/20 border border-white/10 text-xl">
-                      🎬
+            {error && (
+                <div className="max-w-3xl mx-auto mb-8">
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-500/[0.045] border border-red-400/20 text-red-300">
+                        <span>⚠️</span>
+                        <p className="text-sm leading-6">
+                            {error}
+                        </p>
                     </div>
-
-
-                    <div className="min-w-0 flex-1">
-
-                      <h3 className="font-semibold text-white text-base sm:text-lg leading-snug group-hover:text-purple-300 transition">
-                        {movie.title}
-                      </h3>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        Click to view available options
-                      </p>
-
-                    </div>
-
-
-                    <div className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/5 text-slate-500 group-hover:bg-purple-500/20 group-hover:text-purple-300 group-hover:translate-x-1 transition">
-                      →
-                    </div>
-
-                  </div>
-
-                </button>
-              )
+                </div>
             )}
 
-          </div>
 
-        </section>
-      )}
+            {/* LOADING */}
 
-
-      {/* =========================
-          LOADING SEARCH
-      ========================= */}
-
-      {loading && (
-        <div className="flex justify-center py-12">
-
-          <div className="flex items-center gap-3 text-slate-400">
-
-            <span className="w-5 h-5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
-
-            Searching movies...
-
-          </div>
-
-        </div>
-      )}
-
-
-      {/* =========================
-          NO RESULTS
-      ========================= */}
-
-      {!loading &&
-        query.trim() &&
-        movies.length === 0 &&
-        !error && (
-          <div className="py-14 text-center rounded-2xl bg-white/[0.03] border border-dashed border-white/10 mt-8">
-
-            <div className="text-4xl mb-3">
-              🎞️
-            </div>
-
-            <p className="text-slate-400">
-              No movies found.
-            </p>
-
-            <p className="text-sm text-slate-600 mt-1">
-              Try searching with another movie name.
-            </p>
-
-          </div>
-        )}
-
-
-      {/* =========================
-          SELECTED MOVIE
-      ========================= */}
-
-      {selectedMovie && (
-        <section className="mt-12">
-
-          <div className="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-r from-purple-600/15 via-pink-500/10 to-cyan-500/10 border border-white/10">
-
-            <div className="relative z-10">
-
-              <div className="flex items-center gap-3 mb-3">
-
-                <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/20">
-                  🎬
+            {loading && (
+                <div className="flex justify-center py-12">
+                    <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-white/[0.035] border border-white/[0.08] text-white/45">
+                        <span className="w-5 h-5 border-2 border-[#39ff14]/20 border-t-[#39ff14] rounded-full animate-spin" />
+                        Searching movies...
+                    </div>
                 </div>
-
-                <div>
-
-                  <p className="text-xs uppercase tracking-wider text-purple-300 font-semibold">
-                    Selected Movie
-                  </p>
-
-                  <h2 className="text-lg sm:text-2xl font-bold">
-                    {selectedMovie.title}
-                  </h2>
-
-                </div>
-
-              </div>
-
-              <p className="text-sm text-slate-400">
-                Select an available option below
-              </p>
-
-            </div>
-
-          </div>
+            )}
 
 
-          {/* =========================
-              MOVIE OPTIONS LOADING
-          ========================= */}
+            {/* RESULTS */}
 
-          {selectionLoading && (
-            <div className="mt-5 p-8 rounded-2xl bg-white/[0.03] border border-white/10 text-center">
+            {movies.length > 0 && (
+                <section
+                    ref={resultsRef}
+                    className="animate-[slideUp_0.4s_ease-out]"
+                >
 
-              <div className="mx-auto mb-4 w-8 h-8 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+                    <div className="mb-5 flex items-end justify-between gap-3">
 
-              <p className="text-slate-400">
-                Loading movie options...
-              </p>
+                        <div>
+                            <p className="text-[10px] sm:text-xs uppercase tracking-[0.22em] text-[#6dff9b]/65 font-semibold mb-1">
+                                Movies
+                            </p>
 
-            </div>
-          )}
+                            <h2 className="text-xl sm:text-2xl font-bold text-white">
+                                Search Results
+                            </h2>
+                        </div>
+
+                        <span className="shrink-0 px-3 py-1.5 rounded-full bg-[#39ff14]/[0.06] border border-[#7CFFB2]/20 text-[#72ff9f] text-xs font-semibold">
+                            {movies.length} found
+                        </span>
+
+                    </div>
 
 
-          {/* =========================
-              MOVIE OPTIONS
-          ========================= */}
+                    <div className="grid gap-3 sm:gap-4">
 
-          {!selectionLoading &&
-            movieSizes.length > 0 && (
-              <div className="mt-5">
+                        {movies.map((movie, index) => (
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <button
+                                type="button"
+                                key={
+                                    movie.url ||
+                                    index
+                                }
+                                onClick={() =>
+                                    handleMovieSelect(movie)
+                                }
+                                disabled={
+                                    selectionLoading
+                                }
+                                className="group relative w-full min-w-0 text-left overflow-hidden p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-[#b8ffd0]/[0.055] via-[#0aff78]/[0.025] to-[#67dfff]/[0.035] border border-[#8affb5]/[0.18] shadow-[0_10px_35px_rgba(0,0,0,0.35)] hover:border-[#7CFFB2]/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-40"
+                            >
 
-                  {movieSizes.map(
-                    (option, index) => (
-                      <button
-                        type="button"
-                        key={
-                          option.option_id ||
-                          option.url ||
-                          index
-                        }
-                        onClick={() =>
-                          handleSizeSelect(
-                            option
-                          )
-                        }
-                        disabled={
-                          sizeLoading
-                        }
-                        className="group relative overflow-hidden p-5 rounded-2xl text-left bg-slate-900/70 border border-white/10 hover:border-cyan-400/40 hover:bg-cyan-500/[0.05] hover:-translate-y-1 hover:shadow-xl hover:shadow-cyan-950/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-wait"
-                      >
+                                <div className="relative min-w-0 flex items-center gap-2 sm:gap-4">
 
-                        <div className="flex items-center justify-between gap-3">
+                                    {/* POSTER */}
 
-                          <div className="min-w-0">
+                                    {movie.image ? (
+                                        <div className="relative shrink-0 w-16 h-20 sm:w-20 sm:h-24 overflow-hidden rounded-xl border border-[#8affb5]/20 bg-black/30">
 
-                            <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-500/10 border border-purple-400/20 text-purple-300 text-xs font-semibold mb-3">
-                              OPTION{" "}
-                              {index + 1}
-                            </div>
+                                            <img
+                                                src={movie.image}
+                                                alt={movie.title}
+                                                loading="lazy"
+                                                className="absolute left-0 top-[-28%] w-full h-[156%] object-cover object-center"
+                                            />
 
-                            <strong className="block text-sm sm:text-base text-white leading-relaxed">
-                              {option.label}
-                            </strong>
+                                        </div>
+                                    ) : (
+                                        <div className="shrink-0 flex items-center justify-center w-16 h-20 sm:w-20 sm:h-24 rounded-xl bg-[#39ff14]/[0.05] border border-[#7CFFB2]/15">
+                                            🎬
+                                        </div>
+                                    )}
 
-                            {option.size && (
-                              <span className="block mt-2 text-xs text-slate-500">
-                                {option.size}
-                              </span>
+
+                                    {/* INFO */}
+
+                                    <div className="min-w-0 flex-1">
+
+                                        <h3 className="font-semibold text-white text-xs sm:text-base leading-5 sm:leading-6 line-clamp-2">
+                                            {movie.title}
+                                        </h3>
+
+                                        <p className="mt-1.5 text-[10px] sm:text-sm text-white/30">
+                                            Tap to view available options
+                                        </p>
+
+                                    </div>
+
+
+                                    {/* ARROW */}
+
+                                    <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#39ff14]/[0.045] border border-[#7CFFB2]/10 text-[#72ff9f]/50">
+                                        →
+                                    </div>
+
+                                </div>
+
+                            </button>
+
+                        ))}
+
+                    </div>
+
+                </section>
+            )}
+
+
+            {/* NO RESULTS */}
+
+            {hasSearched &&
+                !loading &&
+                movies.length === 0 &&
+                !error && (
+
+                    <div className="max-w-3xl mx-auto mt-8">
+                        <div className="relative overflow-hidden flex items-center justify-center gap-3 px-5 py-5 rounded-2xl bg-[#39ff14]/[0.045] border border-[#39ff14]/25">
+
+                            <span className="text-2xl text-[#39ff14]">
+                                !!
+                            </span>
+
+                            <p className="text-sm sm:text-base font-semibold text-[#39ff14] text-center">
+                                Oops! Movie not available on KRN MovieHub.
+                                Please check the movie spelling and try again.
+                            </p>
+
+                        </div>
+                    </div>
+                )}
+
+
+            {/* SELECTED MOVIE */}
+
+            {selectedMovie && (
+                <section
+                    ref={selectedMovieRef}
+                    className="mt-10 sm:mt-12 animate-[slideUp_0.4s_ease-out]"
+                >
+
+                    <div className="relative overflow-hidden p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#b8ffd0]/[0.07] via-[#39ff14]/[0.025] to-[#67dfff]/[0.045] border border-[#8affb5]/20">
+
+                        <div className="relative min-w-0 flex items-center gap-3 sm:gap-4">
+
+                            {selectedMovie.image ? (
+                                <div className="relative shrink-0 w-16 h-20 sm:w-20 sm:h-24 overflow-hidden rounded-xl border border-[#8affb5]/25">
+
+                                    <img
+                                        src={selectedMovie.image}
+                                        alt={selectedMovie.title}
+                                        className="absolute left-0 top-[-28%] w-full h-[156%] object-cover object-center"
+                                    />
+
+                                </div>
+                            ) : (
+                                <div className="shrink-0 w-14 h-14 flex items-center justify-center rounded-xl bg-[#39ff14]/[0.06] border border-[#8affb5]/20">
+                                    🎬
+                                </div>
                             )}
 
-                          </div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-[#72ff9f] font-semibold mb-1">
+                                    Selected
+                                </p>
 
+                                <h2 className="text-base sm:text-2xl font-bold text-white leading-6 line-clamp-2">
+                                    {selectedMovie.title}
+                                </h2>
 
-                          <span className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-slate-500 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:translate-x-1 transition">
-                            →
-                          </span>
+                                <p className="text-xs sm:text-sm text-white/35 mt-1.5">
+                                    Choose an available option
+                                </p>
+                            </div>
 
                         </div>
 
-                      </button>
-                    )
-                  )}
+                    </div>
 
-                </div>
 
-              </div>
+                    {/* OPTIONS LOADING */}
+
+                    {selectionLoading && (
+                        <div className="mt-5 p-8 rounded-2xl bg-white/[0.035] border border-[#8affb5]/10 text-center">
+
+                            <div className="mx-auto mb-4 w-8 h-8 border-2 border-[#39ff14]/20 border-t-[#72ff9f] rounded-full animate-spin" />
+
+                            <p className="text-white/40 text-sm">
+                                Loading available options...
+                            </p>
+
+                        </div>
+                    )}
+
+
+                    {/* OPTIONS */}
+
+                    {!selectionLoading &&
+                        movieSizes.length > 0 && (
+
+                            <div
+                                ref={optionsRef}
+                                className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+                            >
+
+                                {movieSizes.map(
+                                    (option, index) => (
+
+                                        <button
+                                            type="button"
+                                            key={
+                                                option.option_id ||
+                                                option.url ||
+                                                index
+                                            }
+                                            onClick={() =>
+                                                handleSizeSelect(option)
+                                            }
+                                            disabled={sizeLoading}
+                                            className="group relative overflow-hidden p-4 sm:p-5 rounded-2xl text-left bg-gradient-to-br from-[#b8ffd0]/[0.06] via-[#39ff14]/[0.025] to-[#67dfff]/[0.035] border border-[#8affb5]/[0.16] hover:border-[#7CFFB2]/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-40"
+                                        >
+
+                                            <div className="relative flex items-center justify-between gap-3">
+
+                                                <div className="min-w-0">
+
+                                                    <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#39ff14]/[0.06] border border-[#8affb5]/20 text-[#7CFFB2] text-[10px] sm:text-xs font-semibold mb-3">
+                                                        OPTION {index + 1}
+                                                    </div>
+
+                                                    <strong className="block text-sm sm:text-base text-white leading-relaxed break-words">
+                                                        {option.label}
+                                                    </strong>
+
+                                                    {option.size && (
+                                                        <span className="block mt-2 text-xs text-white/30">
+                                                            {option.size}
+                                                        </span>
+                                                    )}
+
+                                                </div>
+
+                                                <span className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#39ff14]/[0.045] border border-[#8affb5]/10 text-[#72ff9f]/50">
+                                                    →
+                                                </span>
+
+                                            </div>
+
+                                        </button>
+
+                                    )
+                                )}
+
+                            </div>
+                        )}
+
+
+                    {/* SIZE LOADING */}
+
+                    {sizeLoading && (
+                        <div className="mt-5 flex items-center justify-center gap-3 p-5 rounded-2xl bg-[#39ff14]/[0.035] border border-[#8affb5]/15 text-[#72ff9f]">
+
+                            <span className="w-5 h-5 border-2 border-[#39ff14]/20 border-t-[#72ff9f] rounded-full animate-spin" />
+
+                            Processing selected option...
+
+                        </div>
+                    )}
+
+
+                    {/* FINAL RESULT */}
+
+                    {finalLink && (
+                        <div
+                            ref={finalResultRef}
+                            className="relative overflow-hidden mt-6 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#39ff14]/[0.075] via-[#7CFFB2]/[0.035] to-[#67dfff]/[0.055] border border-[#8affb5]/25 animate-[slideUp_0.4s_ease-out]"
+                        >
+
+                            <div className="relative min-w-0 flex items-center gap-3 mb-5">
+
+                                <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-[#39ff14]/10 text-[#72ff9f] border border-[#8affb5]/20">
+                                    ✓
+                                </div>
+
+                                <div className="min-w-0">
+
+                                    <h3 className="font-bold text-white">
+                                        Done
+                                    </h3>
+
+                                    <p className="text-xs sm:text-sm text-[#72ff9f]/70 mt-1 leading-relaxed">
+                                        Hi, I’m Karan 👋 — here’s your movie link. Click below to download the movie.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                            <a
+                                href={finalLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative inline-flex w-full items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-[#39ff14] via-[#64ff91] to-[#9affc8] text-black font-bold shadow-[0_0_22px_rgba(57,255,20,0.16)] hover:shadow-[0_0_35px_rgba(57,255,20,0.30)] transition-all"
+                            >
+                                Click to Download
+                                <span>⬇</span>
+                            </a>
+
+                        </div>
+                    )}
+
+                </section>
             )}
-
-
-          {/* =========================
-              SIZE LOADING
-          ========================= */}
-
-          {sizeLoading && (
-            <div className="mt-5 flex items-center justify-center gap-3 p-5 rounded-2xl bg-cyan-500/5 border border-cyan-400/10 text-cyan-300">
-
-              <span className="w-5 h-5 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
-
-              Processing selected option...
-
-            </div>
-          )}
-
-
-          {/* =========================
-              NO OPTIONS
-          ========================= */}
-
-          {!selectionLoading &&
-            !sizeLoading &&
-            movieSizes.length === 0 &&
-            !error && (
-              <div className="mt-5 p-10 text-center rounded-2xl bg-white/[0.03] border border-dashed border-white/10">
-
-                <div className="text-3xl mb-3">
-                  📭
-                </div>
-
-                <p className="text-slate-400">
-                  No options available.
-                </p>
-
-              </div>
-            )}
-
-
-          {/* =========================
-              FINAL LINK
-          ========================= */}
-
-          {finalLink && (
-            <div className="mt-6 p-6 rounded-2xl bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-400/20">
-
-              <div className="flex items-center gap-3 mb-4">
-
-                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-green-500/15 text-green-400">
-                  ✓
-                </div>
-
-                <div>
-
-                  <h3 className="font-bold text-white">
-                    Result Ready
-                  </h3>
-
-                  <p className="text-xs text-slate-500">
-                    Backend returned a result successfully.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <a
-                href={finalLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-green-500 to-cyan-500 text-white font-bold hover:scale-[1.02] transition"
-              >
-                Open Result →
-              </a>
-
-            </div>
-          )}
 
         </section>
-      )}
-
-    </section>
-  );
+    );
 }
