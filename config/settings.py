@@ -144,7 +144,7 @@ MAILERS = {
 }
 
 
-CCORS_ALLOWED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
