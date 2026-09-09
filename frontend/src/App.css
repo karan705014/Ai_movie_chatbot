@@ -1,0 +1,214 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  color: #222;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+.app {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+/* Header */
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+}
+
+.header p {
+  margin: 0;
+  color: #666;
+}
+
+/* Search */
+
+.search-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.search-section input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 16px;
+  outline: none;
+}
+
+.search-section input:focus {
+  border-color: #555;
+}
+
+.search-section button {
+  padding: 13px 22px;
+  border: none;
+  border-radius: 6px;
+  background: #222;
+  color: white;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.search-section button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error */
+
+.error {
+  padding: 12px;
+  margin-bottom: 20px;
+  border: 1px solid #f1b5b5;
+  background: #fff0f0;
+  color: #c00;
+  border-radius: 6px;
+}
+
+/* Loading */
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+/* Movies */
+
+.movies-section h2 {
+  margin-bottom: 15px;
+}
+
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.movie-card {
+  padding: 20px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.movie-card:hover {
+  border-color: #222;
+  transform: translateY(-2px);
+}
+
+.movie-card h3 {
+  margin: 0 0 8px;
+}
+
+.movie-card p {
+  margin: 0;
+  color: #777;
+  font-size: 14px;
+}
+
+/* Options */
+
+.options-section {
+  margin-top: 35px;
+  padding: 25px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.options-section h2 {
+  margin: 0 0 5px;
+}
+
+.subtitle {
+  margin-top: 0;
+  color: #666;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px;
+  background: #f8f8f8;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.option-card:hover {
+  background: #eee;
+  border-color: #222;
+}
+
+.option-label {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.option-size {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Empty */
+
+.empty {
+  text-align: center;
+  padding: 30px;
+  color: #777;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+  .app {
+    padding: 20px 15px;
+  }
+
+  .search-section {
+    flex-direction: column;
+  }
+
+  .search-section button {
+    width: 100%;
+  }
+
+  .movie-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+}
