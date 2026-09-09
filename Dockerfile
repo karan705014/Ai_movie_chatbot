@@ -38,6 +38,8 @@ COPY pyproject.toml uv.lock ./
 
 # Install Python dependencies
 RUN uv sync --frozen --no-dev --no-install-project
+# Install SeleniumBase ChromeDriver
+RUN uv run seleniumbase install chromedriver
 # Install Playwright Chromium
 RUN /app/.venv/bin/playwright install chromium
 # Copy project
