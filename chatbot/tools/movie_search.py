@@ -148,30 +148,36 @@ def select_movie_size(url: str):
 
 
 def get_final_link(selected_url: str):
-    print("FINAL LINK: starting")
-    print("FINAL LINK URL:", selected_url)
+    print("FINAL LINK: starting", flush=True)
+    print("FINAL LINK URL:", selected_url, flush=True)
 
     try:
+        print("FINAL LINK: creating browser", flush=True)
+
         with SB(headless=True) as sb:
+            print("FINAL LINK: browser created", flush=True)
+
+            print("FINAL LINK: opening URL", flush=True)
             sb.open(selected_url)
 
-            print("FINAL LINK: page loaded")
-            print("FINAL LINK TITLE:", sb.get_title())
+            print("FINAL LINK: page loaded", flush=True)
+            print("FINAL LINK TITLE:", sb.get_title(), flush=True)
 
             if not sb.is_element_present("a.button"):
-                print("FINAL LINK: button not found")
+                print("FINAL LINK: button not found", flush=True)
                 return None
 
-            print("FINAL LINK: button found")
+            print("FINAL LINK: button found", flush=True)
 
             href = sb.get_attribute("a.button", "href")
 
-            print("FINAL LINK HREF:", href)
+            print("FINAL LINK HREF:", href, flush=True)
 
             return href
 
     except Exception as exc:
-        print("FINAL LINK ERROR:", repr(exc))
+        print("FINAL LINK ERROR TYPE:", type(exc).__name__, flush=True)
+        print("FINAL LINK ERROR:", repr(exc), flush=True)
         return None
 
 
