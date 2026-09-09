@@ -3,6 +3,8 @@ from langchain_core.tools import tool
 import re
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
+from seleniumbase import SB
+
 
 
 BASE_URL = "https://filmyfly.sale/"
@@ -145,32 +147,32 @@ def select_movie_size(url: str):
         return []
 
 
-def get_final_link(page, selected_url: str):
+def get_final_link(selected_url: str):
     print("FINAL LINK: starting")
     print("FINAL LINK URL:", selected_url)
 
-    page.goto(
-        selected_url,
-        wait_until="domcontentloaded",
-        timeout=30000,
-    )
+    try:
+        with SB(headless=True) as sb:
+            sb.open(selected_url)
 
-    print("FINAL LINK: page loaded")
-    print("FINAL LINK TITLE:", page.title())
+            print("FINAL LINK: page loaded")
+            print("FINAL LINK TITLE:", sb.get_title())
 
-    page.wait_for_selector(
-        "a.button",
-        timeout=30000,
-    )
+            if not sb.is_element_present("a.button"):
+                print("FINAL LINK: button not found")
+                return None
 
-    print("FINAL LINK: button found")
+            print("FINAL LINK: button found")
 
-    link = page.locator("a.button").first
-    href = link.get_attribute("href")
+            href = sb.get_attribute("a.button", "href")
 
-    print("FINAL LINK HREF:", href)
+            print("FINAL LINK HREF:", href)
 
-    return href
+            return href
+
+    except Exception as exc:
+        print("FINAL LINK ERROR:", repr(exc))
+        return None
 
 
 

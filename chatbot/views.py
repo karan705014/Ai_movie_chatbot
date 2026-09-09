@@ -410,18 +410,9 @@ class MovieSizeSelection(APIView):
             )
 
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
+            final_url = get_final_link(movie_size_url)
 
-                final_url = get_final_link(
-                    page,
-                    movie_size_url,
-                )
-
-                print("Final href:", final_url)
-
-                browser.close()
+            print("Final href:", final_url)
 
             return Response(
                 {
