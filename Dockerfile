@@ -9,6 +9,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # System dependencies for Playwright/Chromium + XVFB (Virtual Display)
+# Note: libgconf-2-4 removed as it is deprecated in newer Debian versions
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -34,7 +35,9 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     xvfb \
     libxi6 \
-    libgconf-2-4 \
+    x11-utils \
+    scrot \
+    python3-tk \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
