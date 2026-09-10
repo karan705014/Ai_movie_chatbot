@@ -57,8 +57,10 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
+# Render के डायनामिक पोर्ट को सपोर्ट करने के लिए डिफ़ॉल्ट ENV सेट करें
+ENV PORT=10000
+EXPOSE ${PORT}
 
-EXPOSE 8000
+# xvfb-run : यह ग्यूनिकॉर्न को वर्चुअल डिस्प्ले और Render के सही PORT पर बाइंड करेगा
+CMD ["xvfb-run", "--server-args=-screen 0 1920x1080x24", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:10000", "--workers", "1", "--timeout", "180"]
 
-# xvfb-run : यह ग्यूनिकॉर्न को एक वर्चुअल डिस्प्ले के अंदर शुरू करेगा, ताकि क्रोम बिना एरर के खुल सके
-CMD ["xvfb-run", "--server-args=-screen 0 1920x1080x24", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "180"]
