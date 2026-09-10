@@ -7,9 +7,11 @@ from seleniumbase import SB
 
 
 
-BASE_URL = "https://filmyfly.sale/"
+BASE_URL = "https://filmyfly.sale"
 SEARCH_URL = f"{BASE_URL}/search.html"
 
+# एक यूनिवर्सल असली यूज़र एजेंट ताकि Cloudflare सर्च ब्लॉक न करे
+FAKE_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 def normalize(text: str) -> str:
     """Convert text to lowercase and remove extra whitespace."""
@@ -18,38 +20,51 @@ def normalize(text: str) -> str:
 
 def movie_search(movie_name: str):
     """Load JS-rendered search results and extract title + href."""
-
     search_url = f"{SEARCH_URL}?search={movie_name}"
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # क्लाउड पर सुरक्षा के लिए आवश्यक आर्गुमेंट्स
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox'
+                ]
+            )
 
-            page = browser.new_page()
+            context = browser.new_context(
+                user_agent=FAKE_USER_AGENT,
+                viewport={"width": 1920, "height": 1080}
+            )
+            page = context.new_page()
+            
+            # वेबड्राइवर छुपाने की स्क्रिप्ट
+            page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-            page.goto(search_url, wait_until="domcontentloaded",timeout=30000)
-            print("PAGE TITLE:", page.title())
-            # Wait until JS-generated result container is populated.
-            page.wait_for_selector("#ff-results .A10",timeout=30000)
+            print(f"SEARCHING URL: {search_url}", flush=True)
+            
+            # टाइमआउट को 30000 से बढ़ाकर 60000 (60 सेकंड) किया गया ताकि लिनक्स सर्वर पर टाइमआउट न हो
+            page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+            print("PAGE TITLE:", page.title(), flush=True)
+            
+            # रिजल्ट कंटेनर लोड होने का इंतजार (टाइमआउट 60 सेकंड)
+            page.wait_for_selector("#ff-results .A10", timeout=60000)
 
             # Get the final DOM after JavaScript execution.
             html = page.content()
-
             browser.close()
 
         soup = BeautifulSoup(html, "html.parser")
-
         results = soup.select("#ff-results .A10")
-
         print("Total blocks found:", len(results))
 
         movies = []
-
         for box in results:
             title_tag = box.select_one(".row-title")
             link_tag = box.select_one("a[href]")
             image_tag = box.select_one("img.row-thumb")
-
 
             if not title_tag or not link_tag:
                 continue
@@ -65,15 +80,14 @@ def movie_search(movie_name: str):
 
             movies.append({
                 "title": title,
-                "url": urljoin(BASE_URL, href),
+                "url": urljoin(BASE_URL + "/", href),  # यकीनन सही यूआरएल बिल्ड करने के लिए
                 "image": image,
-
             })
 
         return movies
 
     except Exception as e:
-        print("ERROR:", e)
+        print("ERROR IN MOVIE SEARCH:", e)
         return []
 
 

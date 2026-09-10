@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
+
 const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+    import.meta.env.VITE_API_BASE_URL || "http://127.0.0"; 
+    
+// Global concurrency lock to fully prevent React / Vercel back-to-back duplicate network firings
+let isProcessingSize = false;
 
 export default function ManualSearch({ initialQuery = "" }) {
     const [query, setQuery] = useState(initialQuery);
@@ -24,10 +28,8 @@ export default function ManualSearch({ initialQuery = "" }) {
     /* =========================
        AI MOVIE AUTO SEARCH
     ========================= */
-
     useEffect(() => {
         const movieName = initialQuery?.trim();
-
         if (!movieName) return;
 
         setQuery(movieName);
@@ -38,7 +40,6 @@ export default function ManualSearch({ initialQuery = "" }) {
     /* =========================
        AUTO SCROLL - RESULTS
     ========================= */
-
     useEffect(() => {
         if (!loading && movies.length > 0) {
             requestAnimationFrame(() => {
@@ -54,7 +55,6 @@ export default function ManualSearch({ initialQuery = "" }) {
     /* =========================
        AUTO SCROLL - SELECTED
     ========================= */
-
     useEffect(() => {
         if (!selectionLoading && selectedMovie) {
             requestAnimationFrame(() => {
@@ -70,7 +70,6 @@ export default function ManualSearch({ initialQuery = "" }) {
     /* =========================
        AUTO SCROLL - OPTIONS
     ========================= */
-
     useEffect(() => {
         if (!selectionLoading && movieSizes.length > 0) {
             requestAnimationFrame(() => {
@@ -86,7 +85,6 @@ export default function ManualSearch({ initialQuery = "" }) {
     /* =========================
        AUTO SCROLL - FINAL
     ========================= */
-
     useEffect(() => {
         if (!sizeLoading && finalLink) {
             requestAnimationFrame(() => {
@@ -100,13 +98,10 @@ export default function ManualSearch({ initialQuery = "" }) {
 
 
     /* =========================
-       STEP 1
-       SEARCH MOVIE
+       STEP 1 - SEARCH MOVIE
     ========================= */
-
     const handleSearch = async (searchValue = query) => {
         const searchQuery = searchValue.trim();
-
         if (!searchQuery || loading) return;
 
         setLoading(true);
@@ -122,28 +117,18 @@ export default function ManualSearch({ initialQuery = "" }) {
             const response = await fetch(
                 `${API_BASE_URL}/search/?q=${encodeURIComponent(searchQuery)}`
             );
-
             const data = await response.json();
-
             console.log("SEARCH RESPONSE:", data);
 
             if (!response.ok) {
-                throw new Error(
-                    data?.error || "Search failed."
-                );
+                throw new Error(data?.error || "Search failed.");
             }
 
             setMovies(data?.results || []);
             setHasSearched(true);
-
         } catch (err) {
             console.error("SEARCH ERROR:", err);
-
-            setError(
-                err?.message ||
-                "Failed to search movies."
-            );
-
+            setError(err?.message || "Failed to search movies.");
         } finally {
             setLoading(false);
         }
@@ -151,10 +136,8 @@ export default function ManualSearch({ initialQuery = "" }) {
 
 
     /* =========================
-       STEP 2
-       SELECT MOVIE
+       STEP 2 - SELECT MOVIE
     ========================= */
-
     const handleMovieSelect = async (movie) => {
         if (!movie?.url) {
             setError("Selected movie has no valid URL.");
@@ -175,39 +158,20 @@ export default function ManualSearch({ initialQuery = "" }) {
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({
-                        movie_url: movie.url,
-                    }),
+                    body: JSON.stringify({ movie_url: movie.url }),
                 }
             );
-
             const data = await response.json();
-
-            console.log(
-                "MOVIE SELECTION RESPONSE:",
-                data
-            );
+            console.log("MOVIE SELECTION RESPONSE:", data);
 
             if (!response.ok) {
-                throw new Error(
-                    data?.error ||
-                    "Failed to load movie options."
-                );
+                throw new Error(data?.error || "Failed to load movie options.");
             }
 
             setMovieSizes(data?.movie_size || []);
-
         } catch (err) {
-            console.error(
-                "MOVIE SELECTION ERROR:",
-                err
-            );
-
-            setError(
-                err?.message ||
-                "Failed to load movie options."
-            );
-
+            console.error("MOVIE SELECTION ERROR:", err);
+            setError(err?.message || "Failed to load movie options.");
         } finally {
             setSelectionLoading(false);
         }
@@ -215,27 +179,24 @@ export default function ManualSearch({ initialQuery = "" }) {
 
 
     /* =========================
-       STEP 3
-       SELECT SIZE
+       STEP 3 - SELECT SIZE (UPGRADED)
     ========================= */
-
     const handleSizeSelect = async (option) => {
-        const selectedUrl =
-            option?.url ||
-            option?.href;
-
-        console.log(
-            "SELECTED URL:",
-            selectedUrl
-        );
+        const selectedUrl = option?.url || option?.href;
+        console.log("SELECTED URL:", selectedUrl);
 
         if (!selectedUrl) {
-            setError(
-                "Selected option has no valid URL."
-            );
+            setError("Selected option has no valid URL.");
             return;
         }
 
+        // Concurrency Guard: Drop duplicate network clicks immediately
+        if (isProcessingSize || sizeLoading) {
+            console.log("Prevented parallel execution loop.");
+            return;
+        }
+
+        isProcessingSize = true;
         setSizeLoading(true);
         setError("");
         setFinalLink("");
@@ -248,46 +209,39 @@ export default function ManualSearch({ initialQuery = "" }) {
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({
-                        movie_size_url: selectedUrl,
-                    }),
+                    body: JSON.stringify({ movie_size_url: selectedUrl }),
                 }
             );
-
             const data = await response.json();
-
-            console.log(
-                "SIZE API RESPONSE:",
-                data
-            );
+            console.log("SIZE API RESPONSE:", data);
 
             if (!response.ok) {
-                throw new Error(
-                    data?.error ||
-                    "Failed to process selected option."
-                );
+                throw new Error(data?.error || "Failed to process selected option.");
             }
 
-            setFinalLink(
-                data?.final_link || ""
-            );
+            const extractedLink = data?.final_link || "";
+            setFinalLink(extractedLink);
 
+            // Auto-Download Hook: Instantly fires download prompt for premium user behavior
+            if (extractedLink) {
+                console.log("Triggering continuous auto-download element...");
+                const downloadAnchor = document.createElement("a");
+                downloadAnchor.href = extractedLink;
+                downloadAnchor.target = "_blank";
+                downloadAnchor.rel = "noopener noreferrer";
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
+            }
         } catch (err) {
-            console.error(
-                "SIZE SELECTION ERROR:",
-                err
-            );
-
-            setError(
-                err?.message ||
-                "Failed to process selected option."
-            );
-
+            console.error("SIZE SELECTION ERROR:", err);
+            setError(err?.message || "Failed to process selected option.");
         } finally {
+            // Unlock concurrency switches safely
             setSizeLoading(false);
+            isProcessingSize = false;
         }
     };
-
 
     return (
         <section className="w-full min-w-0 max-w-5xl mx-auto px-2 sm:px-0 overflow-x-clip">
