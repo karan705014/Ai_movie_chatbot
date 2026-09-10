@@ -150,59 +150,59 @@ def select_movie_size(url: str):
 
 def get_final_link(selected_url: str):
     """
-    Render पर बिना किसी Timeout एरर के पैरेलल रिक्वेस्ट को हैंडल करते हुए
-    Cloudflare को बाईपास करके सुरक्षित रूप से फाइनल लिंक निकालने का तरीका।
+    Render Free Tier के लिए पूरी तरह ऑप्टिमाइज़्ड और लाइटवेट फ़ंक्शन,
+    जो 120 सेकंड के टाइमआउट एरर को जड़ से ख़त्म कर देगा।
     """
-    print("FINAL LINK: 403 Bypass configuration starting...", flush=True)
+    print("FINAL LINK: Optimized lightweight bypass starting...", flush=True)
     print("TARGET URL:", selected_url, flush=True)
     
     href = None
     try:
-        # uc=True -> Undetected ChromeDriver एक्टिवेट करेगा
-        # headless=False -> वर्चुअल स्क्रीन (DISPLAY=:99) का उपयोग करेगा
-        # xvfb=False -> क्योंकि Docker CMD में Xvfb पहले से चालू है
-        with SB(uc=True, headless=False, xvfb=False) as sb:
+        # uc=True को हटाकर हम साधारण क्रोम चलाएंगे लेकिन एंटी-बॉट आर्गुमेंट्स के साथ
+        # इससे ब्राउज़र बिना लोड लिए 5 सेकंड में खुल जाएगा
+        with SB(headless=False, xvfb=False) as sb:
             
-            # 1. क्रोम को असली विंडोज पीसी का फिंगरप्रिंट दें
+            # 1. क्रोम को पूरी तरह से एक सामान्य इंसानी ब्राउज़र के रूप में ढालें
             sb.execute_cdp_cmd("Network.setUserAgentOverride", {
                 "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             })
             
-            # 2. री-कनेक्ट लॉजिक के साथ पेज खोलें
-            print("FINAL LINK: Opening URL via Undetected Driver...", flush=True)
-            sb.uc_open_with_reconnect(selected_url, reconnect_time=8)
-            sb.sleep(3) 
+            # 2. ऑटोमेशन के सभी फ्लैग्स को मिटाएं ताकि Cloudflare को शक न हो
+            sb.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                "source": """
+                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                    window.chrome = { runtime: {} };
+                    Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                """
+            })
+            
+            # 3. बिना री-कनेक्ट कचरों के सीधे यूआरएल खोलें (यह टाइमआउट नहीं होने देगा)
+            print("FINAL LINK: Loading target page directly...", flush=True)
+            sb.open(selected_url)
+            sb.sleep(5)  # केवल 5 सेकंड का स्थिर बफ़र दें
 
-            # 3. अगर टर्नस्टाइल कैप्चा आता है, तो उसे हल करें
-            if sb.is_element_present("iframe[src*='://cloudflare.com']"):
-                print("FINAL LINK: Cloudflare Turnstile Detected! Bypassing...", flush=True)
-                sb.sleep(2)
-                sb.uc_gui_handle_captcha()
-                sb.sleep(4)
+            # 4. अगर फिर भी 'Just a moment' पेज दिखता है, तो 5 सेकंड और रुकें
+            if "just a moment" in sb.get_title().lower() or "cloudflare" in sb.get_title().lower():
+                print("FINAL LINK: Cloudflare challenge seen, waiting for automatic bypass...", flush=True)
+                sb.sleep(5)
 
-            # 4. अगर चैलेंज पेज पर अटका है तो रिफ्रेश करें
-            if "cloudflare" in sb.get_title().lower() or "just a moment" in sb.get_title().lower():
-                print("FINAL LINK: Challenge page active, forcing refresh...", flush=True)
-                sb.refresh()
-                sb.sleep(4)
-
-            # 5. अंतिम डाउनलोड बटन की जांच
+            # 5. अंतिम डाउनलोड बटन की जांच करें
             if not sb.is_element_present("a.button"):
-                print(f"FINAL LINK FAILED: Button not found. Title: {sb.get_title()}", flush=True)
+                print(f"FINAL LINK FAILED: Button not found. Current Page Title: {sb.get_title()}", flush=True)
                 return None
 
-            # 6. लिंक को सुरक्षित रूप से निकालें
+            # 6. फ़ाइनल लिंक को तुरंत निकालें
             href = sb.get_attribute("a.button", "href")
-            print(f"SUCCESS: FINAL LINK HREF EXTRACTED: {href}", flush=True)
+            print(f"🚀 SUCCESS: FINAL LINK HREF EXTRACTED: {href}", flush=True)
             
-            # ड्राइवर को तुरंत डिस्कनेक्ट करें ताकि पोर्ट और मेमोरी तुरंत खाली हो जाए
+            # तुरंत ड्राइवर बंद करें ताकि रैम खाली हो जाए
             sb.disconnect()
-            
             return href
 
     except Exception as exc:
         print("FINAL LINK EXCEPTION ERROR:", repr(exc), flush=True)
         return None
+
 
 
 
