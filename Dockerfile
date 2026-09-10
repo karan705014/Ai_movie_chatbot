@@ -8,8 +8,7 @@ WORKDIR /app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# System dependencies for Playwright/Chromium + XVFB (Virtual Display)
-# Note: libgconf-2-4 removed as it is deprecated in newer Debian versions
+# System dependencies for Playwright/Chromium + XVFB
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -38,6 +37,7 @@ RUN apt-get update && apt-get install -y \
     x11-utils \
     scrot \
     python3-tk \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
@@ -45,11 +45,12 @@ COPY pyproject.toml uv.lock ./
 
 # Install Python dependencies
 RUN uv sync --frozen --no-dev --no-install-project
-# Install SeleniumBase ChromeDriver
+
+# Install SeleniumBase ChromeDriver and Playwright Chromium
 RUN /app/.venv/bin/seleniumbase install chromedriver
-# Install Playwright Chromium
 RUN /app/.venv/bin/playwright install chromium
-# Copy project
+
+# Copy project files
 COPY . .
 
 # Use virtual environment
@@ -57,10 +58,13 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
-# Render के डायनामिक पोर्ट को सपोर्ट करने के लिए डिफ़ॉल्ट ENV सेट करें
+
+# Render के पोर्ट को सपोर्ट करने के लिए
 ENV PORT=10000
 EXPOSE ${PORT}
 
-# xvfb-run : यह ग्यूनिकॉर्न को वर्चुअल डिस्प्ले और Render के सही PORT पर बाइंड करेगा
-CMD ["xvfb-run", "--server-args=-screen 0 1920x1080x24", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:10000", "--workers", "1", "--timeout", "180"]
+# विंडोज की वजह से आने वाले लाइन फॉर्मेट एरर को ठीक करने के लिए dos2unix चलाएं
+RUN dos2unix /app/start.sh && chmod +x /app/start.sh
 
+# कंटेनर शुरू होने पर स्टार्ट स्क्रिप्ट को चलाएं
+CMD ["/app/start.sh"]
