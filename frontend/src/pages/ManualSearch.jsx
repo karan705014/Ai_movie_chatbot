@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+    import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
 
 export default function ManualSearch({ initialQuery = "" }) {
     const [query, setQuery] = useState(initialQuery);
@@ -356,7 +356,7 @@ export default function ManualSearch({ initialQuery = "" }) {
                         ) : (
                             <span className="relative z-10 flex items-center justify-center gap-2 h-full">
 
-                            
+
 
                                 <span className="hidden sm:inline tracking-wide">
                                     Search
@@ -598,16 +598,13 @@ export default function ManualSearch({ initialQuery = "" }) {
 
                                         <button
                                             type="button"
-                                            key={
-                                                option.option_id ||
-                                                option.url ||
-                                                index
-                                            }
+                                            key={option.url || index}
                                             onClick={() =>
                                                 handleSizeSelect(option)
                                             }
-                                            disabled={sizeLoading}
-                                            className="group relative overflow-hidden p-4 sm:p-5 rounded-2xl text-left bg-gradient-to-br from-[#b8ffd0]/[0.06] via-[#39ff14]/[0.025] to-[#67dfff]/[0.035] border border-[#8affb5]/[0.16] hover:border-[#7CFFB2]/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-40"
+                                            // फ्री सर्वर की सेफ्टी के लिए यहाँ एक्स्ट्रा लोडिंग लॉक लगा दिया गया है
+                                            disabled={sizeLoading || loading || selectionLoading}
+                                            className="group relative overflow-hidden p-4 sm:p-5 rounded-2xl text-left bg-gradient-to-br from-[#b8ffd0]/[0.06] via-[#39ff14]/[0.025] to-[#67dfff]/[0.035] border border-[#8affb5]/[0.16] hover:border-[#7CFFB2]/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
 
                                             <div className="relative flex items-center justify-between gap-3">
@@ -643,6 +640,7 @@ export default function ManualSearch({ initialQuery = "" }) {
 
                             </div>
                         )}
+
 
 
                     {/* SIZE LOADING */}

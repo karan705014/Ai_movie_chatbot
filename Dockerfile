@@ -37,7 +37,6 @@ RUN apt-get update && apt-get install -y \
     x11-utils \
     scrot \
     python3-tk \
-    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
@@ -59,12 +58,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Render के पोर्ट को सपोर्ट करने के लिए
+# Render Port Configuration
 ENV PORT=10000
 EXPOSE ${PORT}
 
-# विंडोज की वजह से आने वाले लाइन फॉर्मेट एरर को ठीक करने के लिए dos2unix चलाएं
-RUN dos2unix /app/start.sh && chmod +x /app/start.sh
-
-# कंटेनर शुरू होने पर स्टार्ट स्क्रिप्ट को चलाएं
-CMD ["/app/start.sh"]
+# FREE PLAN OPTIMIZATION: Runs Xvfb in background and uses gthread to queue multiple requests safely without breaking RAM
+CMD ["bash", "-c", "Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 4 --timeout 180"]
