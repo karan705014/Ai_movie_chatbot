@@ -8,7 +8,7 @@ WORKDIR /app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# System dependencies for Playwright/Chromium
+# System dependencies for Playwright/Chromium + XVFB (Virtual Display)
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -32,6 +32,9 @@ RUN apt-get update && apt-get install -y \
     libatspi2.0-0 \
     libgtk-3-0 \
     fonts-liberation \
+    xvfb \
+    libxi6 \
+    libgconf-2-4 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
@@ -54,4 +57,5 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "180"]
+# xvfb-run : यह ग्यूनिकॉर्न को एक वर्चुअल डिस्प्ले के अंदर शुरू करेगा, ताकि क्रोम बिना एरर के खुल सके
+CMD ["xvfb-run", "--server-args=-screen 0 1920x1080x24", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "180"]

@@ -147,37 +147,56 @@ def select_movie_size(url: str):
         return []
 
 
+
 def get_final_link(selected_url: str):
-    print("FINAL LINK: starting", flush=True)
-    print("FINAL LINK URL:", selected_url, flush=True)
-
+    """
+    Render Server पर Cloudflare 403 Forbidden Error को पूरी तरह 
+    बायपास करके Final Download Link निकालने का अचूक तरीका।
+    """
+    print("FINAL LINK: 403 Bypass configuration starting...", flush=True)
+    print("TARGET URL:", selected_url, flush=True)
+    
     try:
-        print("FINAL LINK: creating browser", flush=True)
+        # uc=True -> Undetected ChromeDriver एक्टिवेट करेगा
+        # headless=False -> वर्चुअल स्क्रीन (Xvfb) का पूरा इस्तेमाल करने के लिए इसे False रखें
+        # xvfb=True -> Render सर्वर पर नकली 1080p मॉनिटर स्क्रीन बनाएगा
+        with SB(uc=True, headless=False, xvfb=True) as sb:
+            
+            # 1. Cloudflare को चकमा देने के लिए ब्राउज़र के फिंगरप्रिंट्स को इंसानी ब्राउज़र जैसा सेट करें
+            sb.execute_cdp_cmd("Network.setUserAgentOverride", {
+                "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            })
+            
+            # 2. री-कनेक्ट लॉजिक के साथ यूआरएल खोलें (यह 403 और 'Just a moment' पेजों को ब्रेक करता है)
+            print("FINAL LINK: Opening URL with Reconnect Logic...", flush=True)
+            sb.uc_open_with_reconnect(selected_url, reconnect_time=8)
+            sb.sleep(4)  # जावास्क्रिप्ट को पूरी तरह लोड होने का समय दें
 
-        with SB(headless=True) as sb:
-            print("FINAL LINK: browser created", flush=True)
+            # 3. यदि स्क्रीन पर क्लाउडफ्लेयर का टर्नस्टाइल कैप्चा (Checkbox/Iframe) आ जाता है
+            if sb.is_element_present("iframe[src*='://cloudflare.com']"):
+                print("FINAL LINK: Cloudflare Turnstile Verification Detected! Bypassing...", flush=True)
+                sb.sleep(2)
+                sb.uc_gui_handle_captcha()  # वर्चुअल स्क्रीन पर ऑटो-क्लिक करेगा
+                sb.sleep(5)
 
-            print("FINAL LINK: opening URL", flush=True)
-            sb.open(selected_url)
+            # 4. अगर ब्राउज़र अभी भी क्लाउडफ्लेयर के चैलेंज पेज पर अटका हुआ है, तो एक बार रिफ्रेश करें
+            if "cloudflare" in sb.get_title().lower() or "just a moment" in sb.get_title().lower():
+                print("FINAL LINK: Still blocked by Cloudflare, trying a forced refresh...", flush=True)
+                sb.refresh()
+                sb.sleep(5)
 
-            print("FINAL LINK: page loaded", flush=True)
-            print("FINAL LINK TITLE:", sb.get_title(), flush=True)
-
+            # 5. अंतिम डाउनलोड बटन की जांच करें
             if not sb.is_element_present("a.button"):
-                print("FINAL LINK: button not found", flush=True)
+                print(f"FINAL LINK FAILED: Button not found. Page Title is: {sb.get_title()}", flush=True)
                 return None
 
-            print("FINAL LINK: button found", flush=True)
-
+            # 6. फ़ाइनल लिंक निकालें
             href = sb.get_attribute("a.button", "href")
-
-            print("FINAL LINK HREF:", href, flush=True)
-
+            print("SUCCESS: FINAL LINK HREF EXTRACTED:", href, flush=True)
             return href
 
     except Exception as exc:
-        print("FINAL LINK ERROR TYPE:", type(exc).__name__, flush=True)
-        print("FINAL LINK ERROR:", repr(exc), flush=True)
+        print("FINAL LINK EXCEPTION ERROR:", repr(exc), flush=True)
         return None
 
 
@@ -255,11 +274,15 @@ def extract_search_query(message: str) -> str:
 if __name__ == "__main__":
     movies = movie_search("Toxic")
 
+    print("\n========== MOVIES ==========\n")
+
     for movie in movies:
         print("Movie:", movie["title"])
         print("Movie URL:", movie["url"])
+        print("-" * 50)
 
         next_url = select_movie(movie["url"])
+
         print("Next URL:", next_url)
         print("-" * 50)
 
@@ -268,23 +291,22 @@ if __name__ == "__main__":
 
         options = select_movie_size(next_url)
 
-        print("Available options:")
+        print("\n========== AVAILABLE OPTIONS ==========\n")
 
-        for option in options:
+        for index, option in enumerate(options):
+            print("Index:", index)
             print("Label:", option["label"])
             print("URL:", option["url"])
             print("-" * 50)
 
-        # YAHAN selected option choose karoge
+        # First option testing ke liye select
         if options:
             selected_url = options[0]["url"]
 
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
+            print("\n========== FINAL LINK TEST ==========\n")
+            print("Selected URL:", selected_url)
 
-                final_url = get_final_link(page, selected_url)
+            final_url = get_final_link(selected_url)
 
-                print("Final href:", final_url)
-
-                browser.close()
+            print("Final href:", final_url)
+            print("-" * 50)
