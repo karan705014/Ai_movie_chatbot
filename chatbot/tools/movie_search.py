@@ -150,16 +150,14 @@ def select_movie_size(url: str):
 
 def get_final_link(selected_url: str):
     """
-    Render Free Tier के लिए पूरी तरह ऑप्टिमाइज़्ड और लाइटवेट फ़ंक्शन,
-    जो 120 सेकंड के टाइमआउट एरर को जड़ से ख़त्म कर देगा।
+    Render Free Tier के लिए पूरी तरह ऑप्टिमाइज़्ड फ़ंक्शन।
+    AttributeError को पूरी तरह फिक्स कर दिया गया है।
     """
     print("FINAL LINK: Optimized lightweight bypass starting...", flush=True)
     print("TARGET URL:", selected_url, flush=True)
     
     href = None
     try:
-        # uc=True को हटाकर हम साधारण क्रोम चलाएंगे लेकिन एंटी-बॉट आर्गुमेंट्स के साथ
-        # इससे ब्राउज़र बिना लोड लिए 5 सेकंड में खुल जाएगा
         with SB(headless=False, xvfb=False) as sb:
             
             # 1. क्रोम को पूरी तरह से एक सामान्य इंसानी ब्राउज़र के रूप में ढालें
@@ -172,16 +170,16 @@ def get_final_link(selected_url: str):
                 "source": """
                     Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
                     window.chrome = { runtime: {} };
-                    Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                    Object.defineProperty(navigator, 'plugins', {get: () => []});
                 """
             })
             
-            # 3. बिना री-कनेक्ट कचरों के सीधे यूआरएल खोलें (यह टाइमआउट नहीं होने देगा)
+            # 3. सीधे यूआरएल खोलें
             print("FINAL LINK: Loading target page directly...", flush=True)
             sb.open(selected_url)
-            sb.sleep(5)  # केवल 5 सेकंड का स्थिर बफ़र दें
+            sb.sleep(5)  # 5 सेकंड का स्थिर बफ़र
 
-            # 4. अगर फिर भी 'Just a moment' पेज दिखता है, तो 5 सेकंड और रुकें
+            # 4. अगर फिर भी 'Just a moment' पेज दिखता है
             if "just a moment" in sb.get_title().lower() or "cloudflare" in sb.get_title().lower():
                 print("FINAL LINK: Cloudflare challenge seen, waiting for automatic bypass...", flush=True)
                 sb.sleep(5)
@@ -195,13 +193,15 @@ def get_final_link(selected_url: str):
             href = sb.get_attribute("a.button", "href")
             print(f"🚀 SUCCESS: FINAL LINK HREF EXTRACTED: {href}", flush=True)
             
-            # तुरंत ड्राइवर बंद करें ताकि रैम खाली हो जाए
-            sb.disconnect()
+            # NOTE: sb.disconnect() को हटा दिया गया है क्योंकि with SB() इसे खुद हैंडल करता है
             return href
+
+
 
     except Exception as exc:
         print("FINAL LINK EXCEPTION ERROR:", repr(exc), flush=True)
         return None
+
 
 
 
