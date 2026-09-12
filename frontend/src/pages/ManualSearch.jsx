@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://127.0.0";
+console.log("API BASE URL:", API_BASE_URL);
+console.log("VITE ENV:", import.meta.env.VITE_API_BASE_URL);
 
 // Global concurrency lock to fully prevent React / Vercel back-to-back duplicate network firings
 let isProcessingSize = false;

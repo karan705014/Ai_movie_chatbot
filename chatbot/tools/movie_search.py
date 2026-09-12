@@ -17,7 +17,7 @@ def normalize(text: str) -> str:
 
 
 def movie_search(movie_name: str):
-    """Load JS-rendered search results and extract title + href."""
+    """Load JS-rendered search results and extract title + href safely on Railway."""
     search_url = f"{SEARCH_URL}?search={movie_name}"
 
     try:
@@ -41,21 +41,24 @@ def movie_search(movie_name: str):
             page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
             print(f"SEARCHING URL: {search_url}", flush=True)
-            page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+            
+            # 1. wait_until="networkidle" किया गया ताकि पेज का सारा बैकग्राउंड नेटवर्क डेटा पूरी तरह शांत और लोड हो जाए
+            page.goto(search_url, wait_until="networkidle", timeout=60000)
             print("PAGE TITLE:", page.title(), flush=True)
             
-            # Increased timeout to 60s for slow free-tier server processing
-            page.wait_for_selector("#ff-results .A10", timeout=60000)
+            # 2. 5 सेकंड का एक हार्ड बफ़र वेट दें ताकि स्लो मशीन पर भी DOM पूरी तरह सेटल हो जाए
+            page.wait_for_timeout(5000)
 
+            # Get the final DOM after JavaScript execution.
             html = page.content()
             browser.close()
 
         soup = BeautifulSoup(html, "html.parser")
         
-        # Primary container check with fallback filters to protect against theme updates
+        # Primary container check with extensive layout filters
         results = soup.select("#ff-results .A10")
         if not results:
-            print("MAIN SELECTOR FAILED: Trying layout fallbacks...", flush=True)
+            print("MAIN SELECTOR FAILED: Trying broad layout fallbacks...", flush=True)
             results = soup.select(".ff-results .A10") or soup.select(".A10") or soup.select("[class*='row']")
 
         print("Total blocks found:", len(results))
@@ -88,6 +91,7 @@ def movie_search(movie_name: str):
     except Exception as e:
         print("ERROR IN MOVIE SEARCH:", e)
         return []
+
 
 
 @tool

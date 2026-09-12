@@ -29,7 +29,9 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv(
         "DJANGO_ALLOWED_HOSTS",
-        "127.0.0.1,localhost"
+        "127.0.0.1,localhost",
+        ".up.railway.app",
+
     ).split(",")
     if host.strip()
 ]
@@ -183,7 +185,9 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173"
+        "http://localhost:5173,http://127.0.0.1:5173",
+        "https://YOUR-RAILWAY-DOMAIN.up.railway.app",
+
     ).split(",")
     if origin.strip()
 ]

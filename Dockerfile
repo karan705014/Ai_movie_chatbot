@@ -5,10 +5,10 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install uv
+# Install uv (Astral fast installer)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# System dependencies for Playwright/Chromium + XVFB
+# Complete Linux GUI Dependencies for Playwright & SeleniumBase Web Drivers
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -39,28 +39,30 @@ RUN apt-get update && apt-get install -y \
     python3-tk \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
+# Copy dependency definition files
 COPY pyproject.toml uv.lock ./
 
-# Install Python dependencies
+# Sync Python environment
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Install SeleniumBase ChromeDriver and Playwright Chromium
+# Force install and download standalone web driver binaries inside virtual env
 RUN /app/.venv/bin/seleniumbase install chromedriver
 RUN /app/.venv/bin/playwright install chromium
+# CRITICAL: Download system-level headless browser dependencies for Playwright
+RUN /app/.venv/bin/playwright install-deps
 
-# Copy project files
+# Copy rest of the project
 COPY . .
 
-# Use virtual environment
+# Set environment paths
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Collect static files
+# Trigger Django staticfiles generation
 RUN python manage.py collectstatic --noinput
 
-# Render Port Configuration
+# Bind Dynamic Port Configuration for Railway Engine mapping
 ENV PORT=10000
 EXPOSE ${PORT}
 
-# FREE PLAN OPTIMIZATION: Runs Xvfb in background and uses gthread to queue multiple requests safely without breaking RAM
-CMD ["bash", "-c", "Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 4 --timeout 180"]
+# Safely boots Xvfb virtual frame display and routes async requests via multi-threaded workers
+CMD ["bash", "-c", "rm -f /tmp/.X99-lock && Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 2 --timeout 180"]
