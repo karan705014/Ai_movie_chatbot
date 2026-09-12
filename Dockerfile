@@ -5,10 +5,10 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install uv (Astral fast installer)
+# Install uv (Astral lightning-fast package installer)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Complete Linux GUI Dependencies for Playwright & SeleniumBase Web Drivers
+# Complete Linux GUI Dependencies for virtual screen display handling
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -39,30 +39,28 @@ RUN apt-get update && apt-get install -y \
     python3-tk \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency definition files
+# Copy python configuration blueprints
 COPY pyproject.toml uv.lock ./
 
-# Sync Python environment
+# Synchronize virtual env packages securely
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Force install and download standalone web driver binaries inside virtual env
+# Download stable web binaries into the local virtual environment layer
 RUN /app/.venv/bin/seleniumbase install chromedriver
 RUN /app/.venv/bin/playwright install chromium
-# CRITICAL: Download system-level headless browser dependencies for Playwright
-RUN /app/.venv/bin/playwright install-deps
 
-# Copy rest of the project
+# Copy the rest of the application codebase
 COPY . .
 
-# Set environment paths
+# Inject environment routing parameters
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Trigger Django staticfiles generation
+# Run collectstatic to bind server asset parameters
 RUN python manage.py collectstatic --noinput
 
-# Bind Dynamic Port Configuration for Railway Engine mapping
+# Render Dynamic Port configuration layout
 ENV PORT=10000
 EXPOSE ${PORT}
 
-# Safely boots Xvfb virtual frame display and routes async requests via multi-threaded workers
+# Clean old virtual frame display locks, boot display :99, and launch multi-threaded gthread workers
 CMD ["bash", "-c", "rm -f /tmp/.X99-lock && Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 2 --timeout 180"]
