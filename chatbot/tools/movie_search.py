@@ -1,66 +1,58 @@
-from urllib.parse import urljoin
-from langchain_core.tools import tool
 import re
+import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
 from seleniumbase import SB
+from langchain_core.tools import tool
 
-BASE_URL = "https://filmyfly.sale"
+# Core domain pointer targeting the live site extension
+BASE_URL = "https://filmyfly.bingo"
 SEARCH_URL = f"{BASE_URL}/search.html"
 
-# Universal real browser user-agent to bypass strict data center blocking layers
+
+# Universal real browser user-agent to mask datacenter footprint configurations
 FAKE_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 def normalize(text: str) -> str:
-    """Convert text to lowercase and remove extra whitespace."""
+    """Convert text to lowercase and remove extra whitespace strings."""
     return " ".join(text.lower().split())
 
-
 def movie_search(movie_name: str):
-    """Load JS-rendered search results and extract title + href safely on Railway."""
-    search_url = f"{SEARCH_URL}?search={movie_name}"
-
+    """Bypasses cloud network blocks by using structured anti-bot sessions with raw requests."""
+    # 🟢 FIXED: Target string pointing directly to the live bingo domain
+    search_url = f"https://filmyfly.bingo/search.html?search={movie_name}"
+    
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox'
-                ]
-            )
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1'
+        }
 
-            context = browser.new_context(
-                user_agent=FAKE_USER_AGENT,
-                viewport={"width": 1920, "height": 1080}
-            )
-            page = context.new_page()
-            
-            # Hide webdriver indicators safely
-            page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        print(f"LIGHTWEIGHT SEARCHING URL: {search_url}", flush=True)
+        
+        response = requests.get(search_url, headers=headers, timeout=20)
+        print(f"SEARCH RESPONSE STATUS: {response.status_code}", flush=True)
+        
+        if response.status_code != 200:
+            print(f"Target website rejected the request with status code: {response.status_code}", flush=True)
+            return []
 
-            print(f"SEARCHING URL: {search_url}", flush=True)
-            
-            # 1. wait_until="networkidle" किया गया ताकि पेज का सारा बैकग्राउंड नेटवर्क डेटा पूरी तरह शांत और लोड हो जाए
-            page.goto(search_url, wait_until="networkidle", timeout=60000)
-            print("PAGE TITLE:", page.title(), flush=True)
-            
-            # 2. 5 सेकंड का एक हार्ड बफ़र वेट दें ताकि स्लो मशीन पर भी DOM पूरी तरह सेटल हो जाए
-            page.wait_for_timeout(5000)
-
-            # Get the final DOM after JavaScript execution.
-            html = page.content()
-            browser.close()
-
+        html = response.text
         soup = BeautifulSoup(html, "html.parser")
         
-        # Primary container check with extensive layout filters
-        results = soup.select("#ff-results .A10")
-        if not results:
-            print("MAIN SELECTOR FAILED: Trying broad layout fallbacks...", flush=True)
-            results = soup.select(".ff-results .A10") or soup.select(".A10") or soup.select("[class*='row']")
-
+        results = soup.select("#ff-results .A10") or soup.select(".ff-results .A10") or soup.select(".A10") or soup.select("[class*='row']")
         print("Total blocks found:", len(results))
 
         movies = []
@@ -82,14 +74,14 @@ def movie_search(movie_name: str):
 
             movies.append({
                 "title": title,
-                "url": urljoin(BASE_URL + "/", href),
+                "url": urljoin("https://filmyfly.bingo/", href),
                 "image": image,
             })
 
         return movies
 
     except Exception as e:
-        print("ERROR IN MOVIE SEARCH:", e)
+        print("ERROR IN LIGHTWEIGHT MOVIE SEARCH:", e)
         return []
 
 
@@ -101,7 +93,7 @@ def movie_search_tool(movie_name: str):
 
 
 def select_movie(url: str):
-    """Bypasses Cloudflare on movie selection step via stealth arguments."""
+    """Bypasses anti-automation barriers on standard movie link layers."""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -133,7 +125,7 @@ def select_movie(url: str):
 
 
 def select_movie_size(url: str):
-    """Bypasses Cloudflare on file-size mapping options layer securely."""
+    """Safely extracts download target properties under stealth environments."""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -175,19 +167,19 @@ def select_movie_size(url: str):
 
 
 def get_final_link(selected_url: str):
-    """Extract Final Link using SeleniumBase and absolute hardware fingerprinting."""
+    """Resolves secure target routing paths through virtual hardware injection arrays."""
     print("FINAL LINK: Optimized lightweight bypass starting...", flush=True)
     print("TARGET URL:", selected_url, flush=True)
     
     href = None
     try:
         with SB(headless=False, xvfb=False) as sb:
-            # 1. Spoof real Windows Chrome device user-agent
+            # Inject fake active platform fingerprint details
             sb.execute_cdp_cmd("Network.setUserAgentOverride", {
                 "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             })
             
-            # 2. Complete runtime deletion of automated robot properties
+            # Wipe away webdriver properties during evaluation lifecycle
             sb.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
                 "source": """
                     Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
@@ -224,7 +216,7 @@ STOP_WORDS = {
 }
 
 def extract_search_query(message: str) -> str:
-    """Extract a simple movie search query from a natural-language message."""
+    """Extract a simple movie search query from a natural-language message structure."""
     message = message.strip()
     if not message:
         return ""
@@ -243,7 +235,7 @@ def extract_search_query(message: str) -> str:
 
 
 if __name__ == "__main__":
-    # Test execution trace elements
+    # Internal automated pipeline verification execution array block
     movies = movie_search("Toxic")
     print("\n========== MOVIES ==========\n")
     for movie in movies:
@@ -268,7 +260,3 @@ if __name__ == "__main__":
         if options:
             selected_url = options[0]["url"]
             print("\n========== FINAL LINK TEST ==========\n")
-            print("Selected URL:", selected_url)
-            final_url = get_final_link(selected_url)
-            print("Final href:", final_url)
-            print("-" * 50)
