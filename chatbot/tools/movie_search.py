@@ -6,127 +6,91 @@ from playwright.sync_api import sync_playwright
 from seleniumbase import SB
 from langchain_core.tools import tool
 
-# Core domain pointer targeting the live site extension
 BASE_URL = "https://filmyfly.bingo"
 SEARCH_URL = f"{BASE_URL}/search.html"
 
-
-# Universal real browser user-agent to mask datacenter footprint configurations
+# Universal real browser user-agent to mask automated footprint parameters
 FAKE_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+COMMON_HEADERS = {
+    'User-Agent': FAKE_USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Upgrade-Insecure-Requests': '1'
+}
 
 def normalize(text: str) -> str:
     """Convert text to lowercase and remove extra whitespace strings."""
     return " ".join(text.lower().split())
 
-def movie_search(movie_name: str):
-    """Search movies on FilmyFly and return matching movie pages."""
-    movie_name = movie_name.strip()
 
-    if not movie_name:
-        return []
+def movie_search(movie_name: str):
+    """Loads search results via Playwright to fully execute dynamic JavaScript loading states."""
+    search_url = f"{SEARCH_URL}?search={movie_name}"
+    print(f"PLAYWRIGHT SEARCHING URL: {search_url}", flush=True)
 
     try:
-        # Use requests params so spaces/special characters are encoded correctly.
-        response = requests.get(
-            SEARCH_URL,
-            params={"search": movie_name},
-            headers={
-                "User-Agent": FAKE_USER_AGENT,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Referer": BASE_URL + "/",
-            },
-            timeout=20,
-        )
-
-        print(f"SEARCH URL: {response.url}", flush=True)
-        print(f"SEARCH RESPONSE STATUS: {response.status_code}", flush=True)
-        print(f"SEARCH RESPONSE LENGTH: {len(response.text)}", flush=True)
-
-        if response.status_code != 200:
-            print(
-                f"Target website rejected the request: {response.status_code}",
-                flush=True,
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox'
+                ]
             )
-            return []
 
-        soup = BeautifulSoup(response.text, "html.parser")
+            context = browser.new_context(
+                user_agent=FAKE_USER_AGENT,
+                viewport={"width": 1920, "height": 1080}
+            )
+            page = context.new_page()
+            
+            # Wipe away automatic robot signatures completely
+            page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+            # Route requests and wait for network layers to completely settle down
+            page.goto(search_url, wait_until="networkidle", timeout=60000)
+            print("PAGE TITLE:", page.title(), flush=True)
+            
+            # Safe cushion buffer allowing lazy-loaded tables to fully populate into the DOM
+            page.wait_for_timeout(4000)
+
+            html = page.content()
+            browser.close()
+
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Selects your precise active container block rows
+        results = soup.select("#ff-results .A10")
+        print("Total blocks found:", len(results))
+
         movies = []
-        seen_urls = set()
+        for box in results:
+            title_tag = box.select_one(".row-title")
+            link_tag = box.select_one("a")
+            image_tag = box.select_one("img.row-thumb")
 
-        # The site's current pages expose movie links as /movie/...html.
-        # Do not depend on the old #ff-results/.A10 structure.
-        for link in soup.select('a[href*="/movie/"]'):
-            href = link.get("href")
-            if not href:
+            if not title_tag or not link_tag:
                 continue
 
-            url = urljoin(BASE_URL + "/", href)
+            title = title_tag.get_text(" ", strip=True)
+            href = link_tag.get("href")
 
-            if url in seen_urls:
+            if not href or "search.html" in href:
                 continue
 
-            title = link.get_text(" ", strip=True)
-
-            # Ignore empty/non-movie navigation links.
-            if not title:
-                continue
-
-            # Only keep links that actually point to movie pages.
-            if "/movie/" not in url:
-                continue
-
-            image_tag = link.select_one("img")
             image = image_tag.get("src") if image_tag else None
-            if image:
-                image = urljoin(BASE_URL + "/", image)
 
-            seen_urls.add(url)
             movies.append({
                 "title": title,
-                "url": url,
+                "url": urljoin("https://filmyfly.bingo/", href),
                 "image": image,
             })
 
-        # Fallback for pages where movie links are rendered differently.
-        if not movies:
-            for box in soup.select(".A10, [class*='movie'], [class*='item']"):
-                link = box.select_one('a[href*="/movie/"]')
-                if not link:
-                    continue
-
-                href = link.get("href")
-                title = link.get_text(" ", strip=True)
-
-                if not href or not title:
-                    continue
-
-                url = urljoin(BASE_URL + "/", href)
-
-                if url in seen_urls:
-                    continue
-
-                image_tag = box.select_one("img")
-                image = image_tag.get("src") if image_tag else None
-                if image:
-                    image = urljoin(BASE_URL + "/", image)
-
-                seen_urls.add(url)
-                movies.append({
-                    "title": title,
-                    "url": url,
-                    "image": image,
-                })
-
-        print(f"MOVIES FOUND: {len(movies)}", flush=True)
-
-        for movie in movies:
-            print(f"MOVIE: {movie['title']} -> {movie['url']}", flush=True)
-
         return movies
 
-    except Exception as exc:
-        print("ERROR IN MOVIE SEARCH:", repr(exc), flush=True)
+    except Exception as e:
+        print("ERROR IN JAVASCRIPT MOVIE SEARCH:", e)
         return []
 
 
@@ -137,39 +101,34 @@ def movie_search_tool(movie_name: str):
 
 
 def select_movie(url: str):
-    """Bypasses anti-automation barriers on standard movie link layers."""
+    """Bypasses the second page link-protector blocking layer safely via lightweight requests."""
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=['--disable-blink-features=AutomationControlled', '--no-sandbox']
-            )
-            context = browser.new_context(user_agent=FAKE_USER_AGENT)
-            page = context.new_page()
-            page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        print(f"LIGHTWEIGHT SELECTING MOVIE URL: {url}", flush=True)
+        response = requests.get(url, headers=COMMON_HEADERS, timeout=20)
+        
+        if response.status_code != 200:
+            print(f"Failed to fetch second page. Status: {response.status_code}", flush=True)
+            return None
 
-            print(f"SELECTING MOVIE URL: {url}", flush=True)
-            page.goto(url, wait_until="domcontentloaded", timeout=45000)
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
+        link_tag = soup.select_one(".dlbtn a.bg2")
+        
+        if not link_tag:
+            print("Download link layout element '.dlbtn a.bg2' not found on the page", flush=True)
+            return None
 
-            link = page.locator(".dlbtn a.bg2").first
-            link.wait_for(timeout=45000)
-
-            if link.count() == 0:
-                print("Download link not found")
-                browser.close()
-                return None
-
-            href = link.get_attribute("href")
-            browser.close()
-            return href
+        href = link_tag.get("href")
+        print(f"SUCCESSFULLY CAPTURED PROTECTOR URL: {href}", flush=True)
+        return href
 
     except Exception as e:
-        print("ERROR IN SELECT MOVIE:", e)
+        print("ERROR IN SELECT MOVIE STAGE:", e)
         return None
 
 
 def select_movie_size(url: str):
-    """Safely extracts download target properties under stealth environments."""
+    """Safely extracts intermediate cloud drive size objects under stealth environments."""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -182,23 +141,18 @@ def select_movie_size(url: str):
 
             print(f"LOADING SIZES FROM URL: {url}", flush=True)
             page.goto(url, wait_until="domcontentloaded", timeout=45000)
-            page.wait_for_selector(".dlink.dl", timeout=45000)
+            page.wait_for_selector(".dlink.dl a", timeout=45000)
 
             options = []
-            for box in page.locator(".dlink.dl").all():
-                link = box.locator("a[href]").first
-
-                if not link.count():
-                    continue
-
-                href = link.get_attribute("href")
-                label = box.locator(".dll").first
-
-                if not label.count() or not href:
+            for box in page.locator(".dlink.dl a").all():
+                href = box.get_attribute("href")
+                label_element = box.locator(".dll").first
+                
+                if not label_element.count() or not href:
                     continue
 
                 options.append({
-                    "label": label.inner_text().strip(),
+                    "label": label_element.inner_text().strip(),
                     "url": href,
                 })
 
@@ -211,19 +165,17 @@ def select_movie_size(url: str):
 
 
 def get_final_link(selected_url: str):
-    """Resolves secure target routing paths through virtual hardware injection arrays."""
+    """Resolves final download paths via virtual display rendering architectures."""
     print("FINAL LINK: Optimized lightweight bypass starting...", flush=True)
     print("TARGET URL:", selected_url, flush=True)
     
     href = None
     try:
         with SB(headless=False, xvfb=False) as sb:
-            # Inject fake active platform fingerprint details
             sb.execute_cdp_cmd("Network.setUserAgentOverride", {
                 "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             })
             
-            # Wipe away webdriver properties during evaluation lifecycle
             sb.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
                 "source": """
                     Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
@@ -279,28 +231,11 @@ def extract_search_query(message: str) -> str:
 
 
 if __name__ == "__main__":
-    # Internal automated pipeline verification execution array block
-    movies = movie_search("Toxic")
-    print("\n========== MOVIES ==========\n")
-    for movie in movies:
-        print("Movie:", movie["title"])
-        print("Movie URL:", movie["url"])
+    # Executing localized test pipeline
+    print("RUNNING LOCAL SEARCH TESTING ARRAY...", flush=True)
+    movies_list = movie_search("Toxic")
+    print("\n========== MOVIES RESULTS ==========\n")
+    for movie in movies_list:
+        print("Title Found:", movie["title"])
+        print("URL Linked:", movie["url"])
         print("-" * 50)
-        next_url = select_movie(movie["url"])
-        print("Next URL:", next_url)
-        print("-" * 50)
-
-        if not next_url:
-            continue
-
-        options = select_movie_size(next_url)
-        print("\n========== AVAILABLE OPTIONS ==========\n")
-        for index, option in enumerate(options):
-            print("Index:", index)
-            print("Label:", option["label"])
-            print("URL:", option["url"])
-            print("-" * 50)
-
-        if options:
-            selected_url = options[0]["url"]
-            print("\n========== FINAL LINK TEST ==========\n")
