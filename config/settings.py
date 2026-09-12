@@ -29,9 +29,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv(
         "DJANGO_ALLOWED_HOSTS",
-        "127.0.0.1,localhost",
-        ".up.railway.app",
-
+        "127.0.0.1,localhost,.up.railway.app",
     ).split(",")
     if host.strip()
 ]
@@ -48,7 +46,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "corsheaders",
     "rest_framework",
     "chatbot",
@@ -61,10 +58,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -76,10 +71,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
-
-# =========================================================
-# TEMPLATES
-# =========================================================
 
 TEMPLATES = [
     {
@@ -137,11 +128,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # =========================================================
 
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -150,7 +138,6 @@ USE_TZ = True
 # =========================================================
 
 STATIC_URL = "/static/"
-
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
@@ -169,7 +156,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173"
+        "http://localhost:5173,http://127.0.0.1:5173",
     ).split(",")
     if origin.strip()
 ]
@@ -186,8 +173,6 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",
-        "https://YOUR-RAILWAY-DOMAIN.up.railway.app",
-
     ).split(",")
     if origin.strip()
 ]
@@ -198,9 +183,7 @@ CSRF_TRUSTED_ORIGINS = [
 # =========================================================
 
 SESSION_COOKIE_SECURE = not DEBUG
-
 CSRF_COOKIE_SECURE = not DEBUG
 
 SESSION_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"
-
 CSRF_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"
