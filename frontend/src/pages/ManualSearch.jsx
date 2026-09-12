@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 
 const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://127.0.0"; 
-    
+    import.meta.env.VITE_API_BASE_URL || "http://127.0.0";
+
 // Global concurrency lock to fully prevent React / Vercel back-to-back duplicate network firings
 let isProcessingSize = false;
 
@@ -273,7 +273,7 @@ export default function ManualSearch({ initialQuery = "" }) {
                         type="button"
                         onClick={() => handleSearch()}
                         disabled={loading || !query.trim()}
-                        className="group relative shrink-0 min-w-[92px] sm:min-w-[125px] h-[52px] sm:h-[58px] rounded-xl overflow-hidden
+                        className="group relative shrink-0 w-[110px] sm:w-[125px] min-w-[110px] sm:min-w-[125px] h-[52px] sm:h-[58px] rounded-xl overflow-hidden
                bg-[#39ff14]/[0.08]
                border border-[#39ff14]/40
                text-[#39ff14]
@@ -309,13 +309,9 @@ export default function ManualSearch({ initialQuery = "" }) {
                             </span>
                         ) : (
                             <span className="relative z-10 flex items-center justify-center gap-2 h-full">
-
-
-
-                                <span className="hidden sm:inline tracking-wide">
+                                <span className="inline tracking-wide">
                                     Search
                                 </span>
-
                             </span>
                         )}
                     </button>
