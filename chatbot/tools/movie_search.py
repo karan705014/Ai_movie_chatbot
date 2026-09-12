@@ -19,71 +19,115 @@ def normalize(text: str) -> str:
     return " ".join(text.lower().split())
 
 def movie_search(movie_name: str):
-    """Bypasses cloud network blocks by using structured anti-bot sessions with raw requests."""
-    # 🟢 FIXED: Target string pointing directly to the live bingo domain
-    search_url = f"https://filmyfly.bingo/search.html?search={movie_name}"
-    
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            'Sec-Ch-Ua-Mobile': '?0',
-            'Sec-Ch-Ua-Platform': '"Windows"',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1'
-        }
+    """Search movies on FilmyFly and return matching movie pages."""
+    movie_name = movie_name.strip()
 
-        print(f"LIGHTWEIGHT SEARCHING URL: {search_url}", flush=True)
-        
-        response = requests.get(search_url, headers=headers, timeout=20)
+    if not movie_name:
+        return []
+
+    try:
+        # Use requests params so spaces/special characters are encoded correctly.
+        response = requests.get(
+            SEARCH_URL,
+            params={"search": movie_name},
+            headers={
+                "User-Agent": FAKE_USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": BASE_URL + "/",
+            },
+            timeout=20,
+        )
+
+        print(f"SEARCH URL: {response.url}", flush=True)
         print(f"SEARCH RESPONSE STATUS: {response.status_code}", flush=True)
-        
+        print(f"SEARCH RESPONSE LENGTH: {len(response.text)}", flush=True)
+
         if response.status_code != 200:
-            print(f"Target website rejected the request with status code: {response.status_code}", flush=True)
+            print(
+                f"Target website rejected the request: {response.status_code}",
+                flush=True,
+            )
             return []
 
-        html = response.text
-        soup = BeautifulSoup(html, "html.parser")
-        
-        results = soup.select("#ff-results .A10") or soup.select(".ff-results .A10") or soup.select(".A10") or soup.select("[class*='row']")
-        print("Total blocks found:", len(results))
-
+        soup = BeautifulSoup(response.text, "html.parser")
         movies = []
-        for box in results:
-            title_tag = box.select_one(".row-title") or box.select_one("h2") or box.select_one("h3") or box.select_one(".title")
-            link_tag = box.select_one("a[href]")
-            image_tag = box.select_one("img.row-thumb") or box.select_one("img")
+        seen_urls = set()
 
-            if not title_tag or not link_tag:
+        # The site's current pages expose movie links as /movie/...html.
+        # Do not depend on the old #ff-results/.A10 structure.
+        for link in soup.select('a[href*="/movie/"]'):
+            href = link.get("href")
+            if not href:
                 continue
 
-            title = title_tag.get_text(" ", strip=True)
-            href = link_tag.get("href")
+            url = urljoin(BASE_URL + "/", href)
 
-            if not href or "search.html" in href:
+            if url in seen_urls:
                 continue
 
+            title = link.get_text(" ", strip=True)
+
+            # Ignore empty/non-movie navigation links.
+            if not title:
+                continue
+
+            # Only keep links that actually point to movie pages.
+            if "/movie/" not in url:
+                continue
+
+            image_tag = link.select_one("img")
             image = image_tag.get("src") if image_tag else None
+            if image:
+                image = urljoin(BASE_URL + "/", image)
 
+            seen_urls.add(url)
             movies.append({
                 "title": title,
-                "url": urljoin("https://filmyfly.bingo/", href),
+                "url": url,
                 "image": image,
             })
 
+        # Fallback for pages where movie links are rendered differently.
+        if not movies:
+            for box in soup.select(".A10, [class*='movie'], [class*='item']"):
+                link = box.select_one('a[href*="/movie/"]')
+                if not link:
+                    continue
+
+                href = link.get("href")
+                title = link.get_text(" ", strip=True)
+
+                if not href or not title:
+                    continue
+
+                url = urljoin(BASE_URL + "/", href)
+
+                if url in seen_urls:
+                    continue
+
+                image_tag = box.select_one("img")
+                image = image_tag.get("src") if image_tag else None
+                if image:
+                    image = urljoin(BASE_URL + "/", image)
+
+                seen_urls.add(url)
+                movies.append({
+                    "title": title,
+                    "url": url,
+                    "image": image,
+                })
+
+        print(f"MOVIES FOUND: {len(movies)}", flush=True)
+
+        for movie in movies:
+            print(f"MOVIE: {movie['title']} -> {movie['url']}", flush=True)
+
         return movies
 
-    except Exception as e:
-        print("ERROR IN LIGHTWEIGHT MOVIE SEARCH:", e)
+    except Exception as exc:
+        print("ERROR IN MOVIE SEARCH:", repr(exc), flush=True)
         return []
-
 
 
 @tool
