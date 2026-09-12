@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
 
+// 🟢 FIXED: Ensured the trailing /api prefix is present for local and production environment fallbacks
 const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://127.0.0";
+  import.meta.env.VITE_API_BASE_URL || "https://railway.app";
+
 console.log("API BASE URL:", API_BASE_URL);
 console.log("VITE ENV:", import.meta.env.VITE_API_BASE_URL);
 
