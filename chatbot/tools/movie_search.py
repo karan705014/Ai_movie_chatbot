@@ -112,8 +112,7 @@ def select_movie(url: str):
 
         html = response.text
         soup = BeautifulSoup(html, "html.parser")
-        link_tag = soup.select_one("div.dlink.dl > a")
-        
+        link_tag = soup.select_one(".dlbtn a.bg2")        
         if not link_tag:
             print("Download link layout element '.dlbtn a.bg2' not found on the page", flush=True)
             return None
