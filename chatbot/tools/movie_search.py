@@ -83,7 +83,7 @@ def movie_search(movie_name: str):
 
             movies.append({
                 "title": title,
-                "url": urljoin("https://filmyfly.bingo/", href),
+                "url": urljoin(BASE_URL, href),
                 "image": image,
             })
 
