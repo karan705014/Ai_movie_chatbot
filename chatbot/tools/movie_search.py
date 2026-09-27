@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 from seleniumbase import SB
 from langchain_core.tools import tool
 
-BASE_URL = "https://filmyfly.bingo"
+BASE_URL = "https://filmyfly.army"
 SEARCH_URL = f"{BASE_URL}/search.html"
 
 # Universal real browser user-agent to mask automated footprint parameters
